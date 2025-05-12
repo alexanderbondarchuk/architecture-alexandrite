@@ -1,0 +1,37 @@
+@startuml
+title Диаграмма последовательности кеширования (Caching Sequence Diagram)
+
+actor Operator as "Оператор MES"
+participant MES_UI
+participant MES_API
+participant Redis
+participant Database
+
+== Чтение данных из кеша/БД==
+
+Operator -> MES_UI: Запрос списка заказов
+MES_UI -> MES_API: Запрос списка заказов
+MES_API -> Redis: Проверка кеша (есть ли данные?)
+alt Данные есть в кеше
+    Redis --> MES_API: Возвращает данные из кеша
+else Данных нет в кеше
+    MES_API -> Database: Запрос данных из кеша
+    Database --> MES_API: Возвращает данные
+    MES_API -> Redis: Запись данных в кеш
+end
+MES_API --> MES_UI: Возвращает данные
+MES_UI --> Operator: Отображает данные по заказу
+
+== Изменение данных в кеше/БД ==
+
+Operator -> MES_UI: Изменение статуса заказа
+MES_UI -> MES_API: Отправка данных с изменениями
+MES_API -> Database: Запись в БД
+Database --> MES_API: Сообщает об успешности операции
+MES_API -> Database: Запрос всех необходимых полей обновлённого объекта
+Database --> MES_API: Возвращает обновлённый объект
+MES_API -> Redis: Обновление данных в кеше по ключу (форма инвалидации)
+MES_API --> MES_UI: Возвращает обновлённый объект
+MES_UI --> Operator: Отображение обновленного заказа
+
+@enduml
